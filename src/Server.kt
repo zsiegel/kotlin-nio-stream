@@ -8,6 +8,7 @@ fun main(args: Array<String>) {
     val server = Server(10301)
 
     val serverThread = Thread(server)
+    serverThread.name = "NIO Server Acceptor"
     Runtime.getRuntime().addShutdownHook(Thread {
         serverThread.interrupt()
     })
@@ -20,17 +21,24 @@ class Server(port: Int) : Runnable {
     val socketChannel: ServerSocketChannel = ServerSocketChannel.open()
     val selector: Selector
 
+    val readerThread: Thread
+    val serverReader: ServerReader = ServerReader()
+
     init {
         socketChannel.socket().bind(InetSocketAddress(port))
         socketChannel.configureBlocking(false)
 
         selector = Selector.open()
         socketChannel.register(selector, SelectionKey.OP_ACCEPT)
+
+        readerThread = Thread(serverReader)
+        readerThread.name = "NIO Server Reader"
+        readerThread.start()
     }
 
     override fun run() {
 
-        println("Server socket listening on ${socketChannel.socket().localPort}")
+        println("[${Thread.currentThread().name}] - Server socket listening on ${socketChannel.socket().localPort}")
 
         try {
 
@@ -45,21 +53,18 @@ class Server(port: Int) : Runnable {
                         accept(key)
                     }
 
-                    if (key.isReadable) {
-                        val clientId = key.attachment() as String
-
-                    }
-
                     iter.remove()
                 }
             }
 
-            println("Socket closing gracefully")
+            println("[${Thread.currentThread().name}] - Socket closing gracefully")
             socketChannel.close()
 
         } catch (e: IOException) {
-            System.err.println("Closing down socket - ${e.printStackTrace()}")
+            System.err.println("[${Thread.currentThread().name}] - Closing down socket - ${e.printStackTrace()}")
         }
+
+        readerThread.interrupt()
     }
 
     private fun accept(selectionKey: SelectionKey) {
@@ -69,9 +74,9 @@ class Server(port: Int) : Runnable {
         clientSocket.configureBlocking(false)
 
         val address = clientSocket.socket().inetAddress.toString()
-        val port = clientSocket.socket().localPort
+        val port = clientSocket.socket().port
         val clientId = "$address:$port"
 
-        clientSocket.register(selector, SelectionKey.OP_READ, clientId)
+        clientSocket.register(serverReader.selector, SelectionKey.OP_READ, clientId)
     }
 }
