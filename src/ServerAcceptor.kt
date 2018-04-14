@@ -5,10 +5,10 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 
 fun main(args: Array<String>) {
-    val server = Server(10301)
+    val server = ServerAcceptor(10301)
 
     val serverThread = Thread(server)
-    serverThread.name = "NIO Server Acceptor"
+    serverThread.name = "NIO ServerAcceptor Acceptor"
     Runtime.getRuntime().addShutdownHook(Thread {
         serverThread.interrupt()
     })
@@ -16,7 +16,7 @@ fun main(args: Array<String>) {
     serverThread.start()
 }
 
-class Server(port: Int) : Runnable {
+class ServerAcceptor(port: Int) : Runnable {
 
     val socketChannel: ServerSocketChannel = ServerSocketChannel.open()
     val selector: Selector
@@ -32,13 +32,13 @@ class Server(port: Int) : Runnable {
         socketChannel.register(selector, SelectionKey.OP_ACCEPT)
 
         readerThread = Thread(serverReader)
-        readerThread.name = "NIO Server Reader"
+        readerThread.name = "NIO ServerAcceptor Reader"
         readerThread.start()
     }
 
     override fun run() {
 
-        println("[${Thread.currentThread().name}] - Server socket listening on ${socketChannel.socket().localPort}")
+        println("[${Thread.currentThread().name}] - ServerAcceptor socket listening on ${socketChannel.socket().localPort}")
 
         try {
 
